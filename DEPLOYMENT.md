@@ -10,17 +10,17 @@
 
 | Mục | Nội dung |
 |-----|----------|
-| Họ và tên | (điền họ tên) |
-| Mã học viên | (điền mã học viên) |
-| Repo | (điền link repo K4-DAY12-...) |
+| Họ và tên | Chu Quang Hiếu |
+| Mã học viên | 2A202601344 |
+| Repo | https://github.com/HieuQuang4438/K4-DAY12-2A202601344-ChuQuangHieu |
 
 ## Service
 
 | Mục | Nội dung |
 |-----|----------|
-| Public URL | https://TODO-thay-bang-url-that.up.railway.app |
-| Platform | Railway / Render / Cloud Run — (điền platform bạn dùng) |
-| Ngày deploy | (điền ngày) |
+| Public URL | https://day12-chat-xsmh.onrender.com/ |
+| Platform | Render |
+| Ngày deploy | 10/08/2026 |
 
 ## Biến Môi Trường Đã Set Trên Cloud
 
@@ -29,8 +29,8 @@ Ghi tên biến và **nguồn giá trị**, không ghi giá trị:
 | Biến | Đã set | Ghi chú |
 |------|--------|---------|
 | `PORT` | ✅ | platform tự gán |
-| `API_TOKEN` | ✅ | đặt trong dashboard, không nằm trong repo |
-| `REDIS_URL` | ✅ | (điền: Redis add-on của platform / Upstash / ...) |
+| `API_TOKEN` | ✅ | đặt trong dashboard Render (`sync: false`), không nằm trong repo |
+| `REDIS_URL` | ✅ | Redis instance trên Render, nối qua `fromService` trong `render.yaml` |
 | `BUCKET_CAPACITY` | ✅ | 10 |
 | `REFILL_PER_MINUTE` | ✅ | 10 |
 | `DAILY_BUDGET_USD` | ✅ | 1.0 |
@@ -71,11 +71,46 @@ done; echo
 
 ## Kết Quả Chạy Thật
 
-Dán output của các lệnh trên vào đây:
+Chạy ngày 10/08/2026, `<URL>` = `https://day12-chat-xsmh.onrender.com`.
 
 ```
-(điền output)
+# 1. GET /healthz
+HTTP/1.1 200 OK
+Content-Type: application/json
+x-render-origin-server: uvicorn
+
+{"status":"ok","service":"day12-chat-service","version":"1.0.0"}
+
+# 2. GET /readyz
+HTTP/1.1 200 OK
+Content-Type: application/json
+x-render-origin-server: uvicorn
+
+{"status":"ready","redis":true}
+
+# 3. POST /chat — không gửi token
+HTTP/1.1 401 Unauthorized
+Content-Type: application/json
+www-authenticate: Bearer
+
+{"detail":"invalid or missing bearer token"}
+
+# 4. POST /chat — token hợp lệ
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{"reply":"Ngắn gọn: Deploy la gi phụ thuộc vào ba yếu tố — cấu hình qua biến
+môi trường, health check để orchestrator biết trạng thái, và giới hạn tài
+nguyên.","client_id":"sv-test","turns_before":0,"usd_cost":2.265e-05,
+"usage":{"prompt":3,"completion":37}}
+
+# 5. Rate limit — 15 request liên tiếp, X-Client-Id: sv-ratelimit
+200 200 200 200 200 200 200 200 200 200 429 429 429 429 429
 ```
+
+Nhận xét: đúng 10 request đầu đi qua, bằng `BUCKET_CAPACITY=10`. 5 request sau
+bị token bucket chặn 429 vì xô đã cạn, `REFILL_PER_MINUTE=10` chưa kịp nhỏ thêm
+token trong vài giây đó.
 
 ## Ảnh Chụp Màn Hình
 
@@ -84,19 +119,4 @@ Dán output của các lệnh trên vào đây:
 - `screenshots/dashboard.png` — trang quản lý service trên platform
 - `screenshots/healthz.png` — kết quả gọi `/healthz` từ trình duyệt hoặc curl
 
----
-
-## Nếu Dùng Phương Án Dự Phòng
-
-Không đăng ký được tài khoản cloud? Vẫn nộp được bài, nhưng CP5 tối đa 60% điểm:
-
-1. Đặt `LOCAL_FALLBACK=true` trong `.env`
-2. Chạy `docker compose up -d` rồi kiểm tra `docker compose ps`
-3. Chụp màn hình vào `screenshots/`
-4. Chạy `pytest tests/test_cp5.py -v` — bộ test sẽ tự chuyển sang kiểm tra
-   `http://localhost:8000`
-5. Ghi rõ lý do không deploy được vào phần dưới đây:
-
-```
-(điền lý do nếu dùng phương án dự phòng, ngược lại xóa mục này)
-```
+Không dùng phương án dự phòng — service chạy thật trên Render, `LOCAL_FALLBACK=false`.
